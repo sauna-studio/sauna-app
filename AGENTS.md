@@ -114,9 +114,9 @@ catalog登録とproduct/runtime使用を区別する。Defaultsへ認証情報�
 自前Xcode harnessもnativeJSON設定で同じcompiler policyを全target/configurationへ適用し、effective settingsと実compile flagsを確認する。不可避のSecurity C out-parameterはinitializedlocal/synchronous/noescape/SDKretained-result契約をWhyNotへ明記し、当該call expressionだけunsafeとして独立Review/Security・専用Simulatorで検証する。全体抑制やprovider変更へ広げない。
 
 
-Canonical source: [sauna-studio/.github/policies/swiftui.md](https://github.com/sauna-studio/.github/blob/e25d595cb8502b1b672a0c8a88edb3847c4415a2/policies/swiftui.md).
-Source commit: `e25d595cb8502b1b672a0c8a88edb3847c4415a2`.
-Policy SHA-256: `c21bc4609b577f5d8cb3513b3d9fd965f2c7988e682eac15baa7f9929f25e7d9`.
+Canonical source: [sauna-studio/.github/policies/swiftui.md](https://github.com/sauna-studio/.github/blob/5e9ea5df47a8b20549675827eb8d59c831a9a19d/policies/swiftui.md).
+Source commit: `5e9ea5df47a8b20549675827eb8d59c831a9a19d`.
+Policy SHA-256: `6bb2d3b0a4d0e3891a72614841a5dd1ff7d5a299d62d0e11a117bc4771e8d3ff`.
 
 <!-- BEGIN SAUNA_STUDIO_SWIFTUI_POLICY -->
 ## SwiftUI policy — iOS/iPadOS 27.2+
@@ -125,7 +125,17 @@ Scope: SwiftUI work in `sauna-app` and `sauna-admin-app`. Read the available Swi
 
 ### Layout
 
-Start with standard containers. Select `Layout` for placement, `onGeometryChange` for observation, `alignmentGuide` for relationships, Subview APIs for containers, `ArrangementView` for two regions. Check `ViewThatFits`/`fixedSize` sizing. `if` removes; `opacity`/`hidden` reserve space. Check invisible accessibility/hit testing. `GeometryReader` needs a geometry-driven purpose; prevent feedback loops. `Layout` is not lazy virtualization. [User reference](https://zenn.dev/zunda_pixel/articles/2cc489b4168a5a)
+Start with standard containers. Select `Layout` for placement, `onGeometryChange` for observation, `alignmentGuide` for relationships, Subview APIs for containers, `ArrangementView` for custom two-region relationships. Check `ViewThatFits`/`fixedSize` sizing. `if` removes; `opacity`/`hidden` reserve space. Check invisible accessibility/hit testing. `GeometryReader` needs a geometry-driven purpose; prevent feedback loops. `Layout` is not lazy virtualization. [User reference](https://zenn.dev/zunda_pixel/articles/2cc489b4168a5a)
+
+### Two-region arrangements
+
+Prefer standard adaptive navigation/content containers when they fit. Consider `ArrangementView` for custom split or foreground/background relationships; it does not supply navigation. Follow Apple's container-nesting guidance.
+
+Before choosing a style, decide which content can disappear and which belongs in front. A constrained split may show only primary; a stacked overlay places primary above secondary. These roles are not interchangeable. Keep needed secondary information/actions reachable through another presentation. Sizing preferences do not prove the final layout.
+
+Keep state that must survive conditional style/container branches above those identity boundaries. Verify continuity rather than assuming hidden content or a style switch preserves state. Do not infer complete visibility from `splitArrangementAxis`, `overlayArrangementZIndex` or reserved-region signals alone.
+
+The article's Xcode 27.1 beta animation/API observations are context, not permanent platform guarantees. Recheck the selected SDK before adding a workaround. [User reference](https://fatbobman.com/zh/posts/arrangementview-think-before-you-arrange/), [Apple arrangements](https://developer.apple.com/documentation/swiftui/arrangementview), [Apple design guidance](https://developer.apple.com/videos/play/tech-talks/111463/).
 
 ### Identity and ownership
 
@@ -149,7 +159,7 @@ Define an action's purpose before its position. Prefer suitable semantic toolbar
 
 ### Verification
 
-For UI changes, build/test on the target SDK and check iPhone/iPad resizing, Dynamic Type, accessibility, state lifetime and back navigation. Profile performance when needed. Document-only changes verify policy parity/links; do not claim unexecuted UI or Instruments checks.
+For UI changes, build/test on the target SDK and check iPhone/iPad resizing, Dynamic Type, accessibility, state lifetime and back navigation. For arrangements, check applicable primary-only, split and overlay outcomes, secondary access and state continuity. Profile performance when needed. Document-only changes verify policy parity/links; do not claim unexecuted UI or Instruments checks.
 
 Apple contracts: [Observation migration](https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro), [State](https://developer.apple.com/documentation/swiftui/state), [NavigationStack](https://developer.apple.com/documentation/swiftui/navigationstack), [Layout](https://developer.apple.com/documentation/swiftui/layout), [ArrangementView](https://developer.apple.com/documentation/swiftui/arrangementview). Skill: [SwiftUI Agent Skill](https://github.com/AvdLee/SwiftUI-Agent-Skill).
 <!-- END SAUNA_STUDIO_SWIFTUI_POLICY -->
