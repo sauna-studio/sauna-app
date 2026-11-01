@@ -114,9 +114,9 @@ catalog登録とproduct/runtime使用を区別する。Defaultsへ認証情報�
 自前Xcode harnessもnativeJSON設定で同じcompiler policyを全target/configurationへ適用し、effective settingsと実compile flagsを確認する。不可避のSecurity C out-parameterはinitializedlocal/synchronous/noescape/SDKretained-result契約をWhyNotへ明記し、当該call expressionだけunsafeとして独立Review/Security・専用Simulatorで検証する。全体抑制やprovider変更へ広げない。
 
 
-Canonical source: [sauna-studio/.github/policies/swiftui.md](https://github.com/sauna-studio/.github/blob/3097a1df8eb8f397adf803562aadd4ef46aaf609/policies/swiftui.md).
-Source commit: `3097a1df8eb8f397adf803562aadd4ef46aaf609`.
-Policy SHA-256: `9a12bdf1e70121bf5eb38a738f01009700ec46a2979ff6d555ed9cab44f38558`.
+Canonical source: [sauna-studio/.github/policies/swiftui.md](https://github.com/sauna-studio/.github/blob/e25d595cb8502b1b672a0c8a88edb3847c4415a2/policies/swiftui.md).
+Source commit: `e25d595cb8502b1b672a0c8a88edb3847c4415a2`.
+Policy SHA-256: `c21bc4609b577f5d8cb3513b3d9fd965f2c7988e682eac15baa7f9929f25e7d9`.
 
 <!-- BEGIN SAUNA_STUDIO_SWIFTUI_POLICY -->
 ## SwiftUI policy — iOS/iPadOS 27.2+
@@ -142,6 +142,10 @@ Prefer property-granular `@Observable` models and small dependency boundaries. A
 Default to an exhaustive `Hashable` route enum with stable IDs and `[Route]`; use `NavigationPath` when heterogeneous types are needed. Own the router at its scope and inject through `@Environment`. Modernize legacy wrappers. Never derive a retroactive `Binding: Hashable` from mutable wrapped values. [User reference](https://zenn.dev/zunda_pixel/articles/ebf2a079cbf68b)
 
 Own routers per scene/account/profile; key private presentation caches by environment/facility too. Clear authenticated presentation on logout, revocation or identity changes; discard late results from a previous identity/scope. Keep token/CSRF handling in the existing session layer, not UI state or navigation persistence. Routes contain IDs, not credentials or full private models. Authorized display models remain allowed. Restored IDs/deep links require API authorization; UI state grants no access. Preserve redacted errors.
+
+### Actions and toolbars
+
+Define an action's purpose before its position. Prefer suitable semantic toolbar placements; reconsider competing actions before fixing physical edges. Choose `ButtonRole` to match behavior: `.close` preserves progress, `.cancel` abandons the pending operation, `.confirm` confirms, and `.destructive` identifies destructive work. Roles do not implement application save/discard logic or grant API authorization; handlers and presentation policy must implement the promised behavior. Use system role labels when appropriate and clear contextual labels when needed. Custom placement or content actions remain valid when justified. Verify unsaved-change dismissal, required destructive confirmation/undo, accessibility and compact/expanded toolbar overflow. [User reference](https://zenn.dev/zunda_pixel/articles/7ed1e0d8456e7c), [Apple ButtonRole](https://developer.apple.com/documentation/swiftui/buttonrole), [semantic placements](https://developer.apple.com/documentation/swiftui/toolbaritemplacement).
 
 ### Verification
 
