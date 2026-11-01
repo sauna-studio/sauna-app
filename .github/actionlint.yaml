@@ -1,0 +1,5 @@
+# actionlint 1.7.12 predates this official hosted label; do not disable runner-label checks.
+# Remove when its catalog catches up: https://github.com/sauna-studio/sauna-app/issues/8
+self-hosted-runner:
+  labels:
+    - xcode-27

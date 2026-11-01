@@ -14,3 +14,22 @@ jobs:
     uses: sauna-studio/.github/.github/workflows/reusable-repository.yml@84222ff551e9b6e9bab6ba4f29fe3ddb990b37cb
     permissions:
       contents: read
+  apple-session:
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Record selected toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Build and test portable contract (fake persistence only)
+        run: |
+          swift build
+          swift test
+      - name: Test real Keychain in an owned iOS 27.2 Simulator
+        run: python3 scripts/test_simulator.py
