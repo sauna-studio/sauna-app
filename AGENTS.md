@@ -91,6 +91,8 @@ Sauna APIを正本とし、Passkeyでログインする。TweetbotのVintage・P
 
 ## Apple session library検証
 
+Xcode27.2のproject設定はJSON `project.xcproj`を用いる。移行は公式`xcodebuild -convert-project 'Xcode Project'`またはXcodeのProject Format操作を使い、scheme/target IDs・SwiftPM参照とpins・testhost/署名境界を保持してbuild/testする。旧形式の併置や手製の未検証converterを加えない。詳細は`docs/xcode-project-format.md`。
+
 `SaunaAppleSession`はSwift 6.4の保存契約ライブラリ。iOS/iPadOS製品minimumは27.2、macOS27.0はfake-only host tests用。`swift build` / `swift test` / `python3 scripts/test_simulator.py`を実行する。CIはpolicyに加え実コード・実Simulatorを検証する。
 
 既存ホストKeychainに触れない。SecItem backendはiOSだけでコンパイルし、実検証は専用Simulator・テスト固有namespaceだけを使用する。testhostのad-hoc署名は証明書・秘密鍵・Teamを使わない。共有access groupや弱いaccessibilityでテストを通さない。スクリプトは自分が作ったdeviceだけを削除し、`shutdown all`を使わない。
