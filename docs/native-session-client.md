@@ -41,7 +41,7 @@ logoutは正しい204とローカル精密削除が両方成功した時だけ�
 
 ## 検証構成
 
-Xcode harnessは以前の直接Sources frameworkから、正本のlocal SwiftPM productをlinkするtest bundleへ変更した。package dependenciesとgenerated codeを同じbuildで検証するため、既存target settingsを引き継ぎstandard `project.pbxproj`を構成した。旧`project.xcproj`からXcode自身が自動変換したとは扱わない。
+Xcode harnessは以前の直接Sources frameworkから、正本のlocal SwiftPM productをlinkするtest bundleへ変更した。その際に構成した`project.pbxproj`は、後続の公式CLI変換でXcode27.2標準のJSON `project.xcproj`へ移行した。package参照・target/scheme ID・全Debug/Release build settingsを保持する。手順と検証範囲は[project format](xcode-project-format.md)を参照する。
 
 ホストテストはfake persistenceだけ。内部test transportは任意URLをpublic clientへ公開せず、宛先guard後に所有random loopback portへrouteして実HTTPを検証する。固定8080への実API接続は別smokeで確認する。Keychain実検証は専用iOS 27.2 Simulator、合成token、test固有namespaceのみ。host Keychainや既存API/Web/DBを停止・resetしない。
 
