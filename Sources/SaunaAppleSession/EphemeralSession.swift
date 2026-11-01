@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 private final class RejectRedirects: NSObject, URLSessionTaskDelegate, Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask,

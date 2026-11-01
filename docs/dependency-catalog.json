@@ -1,0 +1,76 @@
+{
+  "proposalRevision": "dff8847b09af6ea70b30472bd5c5bc91dd86c830",
+  "dependencies": [
+    {
+      "identity": "swift-http-api-proposal",
+      "url": "https://github.com/apple/swift-http-api-proposal.git",
+      "requirement": {
+        "branch": "main"
+      }
+    },
+    {
+      "identity": "valet",
+      "url": "https://github.com/square/Valet.git",
+      "requirement": {
+        "from": "5.0.0"
+      }
+    },
+    {
+      "identity": "defaults",
+      "url": "https://github.com/sindresorhus/Defaults.git",
+      "requirement": {
+        "from": "9.0.0"
+      }
+    },
+    {
+      "identity": "swift-memberwise-init-macro",
+      "url": "https://github.com/gohanlon/swift-memberwise-init-macro.git",
+      "requirement": {
+        "from": "0.6.0"
+      }
+    },
+    {
+      "identity": "swift-http-types",
+      "url": "https://github.com/apple/swift-http-types.git",
+      "requirement": {
+        "exact": "1.8.0"
+      }
+    },
+    {
+      "identity": "swift-algorithms",
+      "url": "https://github.com/apple/swift-algorithms.git",
+      "requirement": {
+        "from": "1.2.0"
+      }
+    },
+    {
+      "identity": "swift-async-algorithms",
+      "url": "https://github.com/apple/swift-async-algorithms.git",
+      "requirement": {
+        "from": "1.0.0"
+      }
+    },
+    {
+      "identity": "swift-collections",
+      "url": "https://github.com/apple/swift-collections.git",
+      "requirement": {
+        "from": "1.1.0"
+      }
+    },
+    {
+      "identity": "swift-retry",
+      "url": "https://github.com/fumoboy007/swift-retry.git",
+      "requirement": {
+        "from": "0.2.4"
+      }
+    },
+    {
+      "identity": "swift-async-operations",
+      "url": "https://github.com/mtj0928/swift-async-operations.git",
+      "requirement": {
+        "from": "0.5.0"
+      }
+    }
+  ],
+  "xcodeProject": "Tests/SessionSimulatorHarness/SessionSimulatorHarness.xcodeproj"
+}

@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 struct StoredBlob: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     let revision: Data
@@ -25,8 +25,10 @@ private struct PersistedSession {
     func encode() -> Data {
         var data = Data([1])
         for value in [storedAt.timeIntervalSince1970, expiresAt.timeIntervalSince1970] {
-            var bits = value.bitPattern.bigEndian
-            withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
+            let bits = value.bitPattern
+            for shift in stride(from: 56, through: 0, by: -8) {
+                data.append(UInt8(truncatingIfNeeded: bits >> shift))
+            }
         }
         data.append(token.bytes)
         return data

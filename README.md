@@ -27,3 +27,7 @@ python3 scripts/test_simulator.py
 CIはrepository policyに加え同じbuild/testを実行します。公式の`xcode-27` runnerでXcode 27.2を明示選択します。runnerのXcodeは現在RC build 27B48、ローカル実測はfinal 27B52であり、同一buildとは扱いません（[公式runner仕様](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)）。
 
 [AGENTS.md](AGENTS.md)と[CONTRIBUTING.md](CONTRIBUTING.md)に従い、独立Review / Security ReviewとGitHub Codexレビューを満たしてからマージします。
+
+## Apple dependency / compiler foundation
+
+指定libraryの事前catalogと自前Swift6 compiler policyを追加しています。[依存・利用範囲・検証手順](docs/dependency-catalog.md)を参照してください。catalogの解決とruntime利用を区別し、未実装の画面・認証機能を完成扱いにしません。

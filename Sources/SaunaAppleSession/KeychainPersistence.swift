@@ -21,8 +21,10 @@ struct KeychainPersistence: SessionPersistence {
         query[kSecReturnData as String] = true
         query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var result: CFTypeRef? = nil
+        // SecItem.h requires a retained-result out-parameter; switching providers would change our CAS contract.
+        // This initialized local stays live through the synchronous call; no pointer escapes across an await.
+        let status = unsafe SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
         try check(status)
         guard let fields = result as? [String: Any],

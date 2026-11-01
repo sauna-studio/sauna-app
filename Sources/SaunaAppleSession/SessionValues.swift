@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 public enum SessionContractError: Error, Sendable, Equatable {
     case invalidValue, storageUnavailable, storageLocked, storageConflict, staleOperation

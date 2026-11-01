@@ -74,6 +74,15 @@ func seed(_ vault: SessionVault, byte: UInt8 = 0, at date: Date = now, ttl: Doub
         #expect(csrfNotPersisted)
         #expect(try await vault.requestCredentials(now: now) != nil)
     }
+    @Test func persistentRecordKeepsItsOriginalBigEndianWireFormat() async throws {
+        let storage = MemoryPersistence()
+        let vault = SessionVault(scope: localCustomer, persistence: storage)
+        _ = try await seed(vault, byte: 17, ttl: 600)
+        let blob = try #require(try storage.read(scope: localCustomer))
+        let expected = Data([1, 65, 221, 205, 101, 0, 0, 0, 0, 65, 221, 205, 101, 150, 0, 0, 0] + Array(repeating: UInt8(17), count: 32))
+        let matchesOriginalFormat = blob.payload == expected
+        #expect(matchesOriginalFormat)
+    }
     @Test func restoreHasNoCSRFUntilTheAPIResponseIsConfirmed() async throws {
         let storage = MemoryPersistence()
         let first = SessionVault(scope: localCustomer, persistence: storage)
