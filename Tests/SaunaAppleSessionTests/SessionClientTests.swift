@@ -329,7 +329,7 @@ private struct OwnedLoopbackRoute: ClientTransport {
                 #expect(observation.value.withLock { $0 })
                 result = .success(())
             } catch { result = .failure(error) }
-            session.invalidateAndCancel(); await fixture.stop(); try result.get()
+            session.invalidateAndCancel(); try await fixture.stop(); try result.get()
         }
     }
     @Test func generatedClientAndBufferedURLSessionNeverForwardSecretsOnRedirect() async throws {
@@ -352,6 +352,6 @@ private struct OwnedLoopbackRoute: ClientTransport {
             #expect(fixture.counts().target == 0)
             result = .success(())
         } catch { result = .failure(error) }
-        session.invalidateAndCancel(); await fixture.stop(); try result.get()
+        session.invalidateAndCancel(); try await fixture.stop(); try result.get()
     }
 }

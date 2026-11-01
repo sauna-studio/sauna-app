@@ -104,3 +104,9 @@ Xcode27.2のproject設定はJSON `project.xcproj`を用いる。移行は公式`
 public `SessionClient(vault:)`はvault scopeを唯一のprofile/environment源にし、固定local backendと2operationだけを許可する。production未設定はdeny。原文OpenAPI snapshot/sourcehashを`python3 scripts/validate_openapi.py --verify-upstream`で照合し、公式command pluginで再生成する。生成物を手編集しない。`swift build/test --force-resolved-versions`と専用Simulator、生成差分・両lockのruntime pins一致を検証する。
 
 Originはbackend originと異なるprofile別localhost5173/5174。cookieとOriginの生成搬送制約はAPI#51を追跡する。一般的なpercent decode・任意URL/transportのpublic注入は追加しない。raw ClientError/DecodingError/HTTPBody/underlyingを公開エラー・ログへ出さない。16KiB decoder入力上限をwireメモリ上限と記録しない。詳しい更新・検証手順は`docs/native-session-client.md`。
+
+## Apple依存catalog / compiler policy
+
+指定10repositoryの宣言は`docs/dependency-catalog.json`、解決revisionは`Package.resolved`を正本とし、`python3 scripts/validate_swift_policy.py`でeffective manifestと照合する。自前targetは6 upcoming features・defaultIsolation(nil)・strictMemorySafety・warnings-as-errors・Swift6を適用し、外部dependencyへ強制しない。公開Foundation境界はpublic import、生成code手編集/unsafe抑制/unchecked escapeをしない。
+
+catalog登録とproduct/runtime使用を区別する。Defaultsへ認証情報を保存せず、Valetへ暗黙移行せず、retryを非冪等認証へ自動適用しない。opaque認証型へmemberwise macroを適用しない。macro/HTTPproposalの環境overrideやplugin sandbox/validation無効化を追加しない。詳細・実在する検証コマンドは`docs/dependency-catalog.md`を参照する。

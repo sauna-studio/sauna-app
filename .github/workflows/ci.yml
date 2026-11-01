@@ -29,6 +29,8 @@ jobs:
           swift --version
       - name: Test Simulator inventory selection
         run: python3 scripts/test_simulator_selection.py
+      - name: Verify compiler policy and dependency catalog
+        run: python3 scripts/validate_swift_policy.py
       - name: Verify pinned contract and generated sources
         run: |
           python3 scripts/validate_openapi.py --verify-upstream

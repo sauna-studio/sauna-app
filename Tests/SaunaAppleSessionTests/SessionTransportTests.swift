@@ -1,98 +1,128 @@
-struct WireReply: Sendable { let status: String; var headers = ""; var body = "" }
-import Darwin
+import Dispatch
 import Foundation
+import Network
 import Synchronization
 import Testing
 @testable import SaunaAppleSession
 
-private enum FixtureError: Error { case socketFailure }
-private final class SharedFixtureState: Sendable { let value = Mutex(LoopbackFixture.State()) }
+struct WireReply: Sendable { let status: String; var headers = ""; var body = "" }
+private enum FixtureError: Error { case listenerFailure, stopTimedOut }
+private final class SharedFixtureState: Sendable {
+    struct State: Sendable {
+        var stopping = false
+        var targetRequests = 0
+        var cacheRequests = 0
+        var port: UInt16?
+        var connections: [NWConnection] = []
+    }
+    let value = Mutex(State())
+}
+private final class StopCompletion: Sendable {
+    private let continuation: Mutex<CheckedContinuation<Bool, Never>?>
+    init(_ continuation: CheckedContinuation<Bool, Never>) { self.continuation = Mutex(continuation) }
+    func finish(_ cancelled: Bool) {
+        let pending = continuation.withLock { stored in let value = stored; stored = nil; return value }
+        pending?.resume(returning: cancelled)
+    }
+}
+
 final class LoopbackFixture: Sendable {
-    struct State: Sendable { var stopping = false; var targetRequests = 0; var cacheRequests = 0 }
     let port: UInt16
     private let state = SharedFixtureState()
-    private let worker: Task<Void, Never>
+    private let listener: NWListener
+    private let queue = DispatchQueue(label: "studio.sauna.tests.owned-loopback")
+
     init(reply: @escaping @Sendable (String) -> WireReply? = { _ in nil }) throws {
-        let listener = socket(AF_INET, SOCK_STREAM, 0)
-        guard listener >= 0 else { throw FixtureError.socketFailure }
-        var address = sockaddr_in()
-        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-        address.sin_family = sa_family_t(AF_INET)
-        address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
-        let bound = withUnsafePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(listener, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
-        }
-        guard bound == 0, listen(listener, 8) == 0 else { close(listener); throw FixtureError.socketFailure }
-        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let status = withUnsafeMutablePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(listener, $0, &length) }
-        }
-        guard status == 0 else { close(listener); throw FixtureError.socketFailure }
-        let port = UInt16(bigEndian: address.sin_port)
-        self.port = port
+        let parameters = NWParameters.tcp
+        parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: .any)
+        let listener = try NWListener(using: parameters)
+        self.listener = listener
+        let ready = DispatchSemaphore(value: 0)
         let state = self.state
-        worker = Task.detached {
-            defer { close(listener) }
-            while true {
-                let connection = accept(listener, nil, nil)
-                guard connection >= 0 else { return }
-                if state.value.withLock({ $0.stopping }) { close(connection); return }
-                var timeout = timeval(tv_sec: 2, tv_usec: 0)
-                _ = withUnsafePointer(to: &timeout) { setsockopt(connection, SOL_SOCKET, SO_RCVTIMEO, $0, socklen_t(MemoryLayout<timeval>.size)) }
-                var noSignal: Int32 = 1
-                _ = withUnsafePointer(to: &noSignal) { setsockopt(connection, SOL_SOCKET, SO_NOSIGPIPE, $0, socklen_t(MemoryLayout<Int32>.size)) }
-                var data = Data()
-                var bytes = [UInt8](repeating: 0, count: 1024)
-                while data.count < 8192 && data.range(of: Data("\r\n\r\n".utf8)) == nil {
-                    let count = recv(connection, &bytes, bytes.count, 0)
-                    if count <= 0 { break }
-                    data.append(contentsOf: bytes.prefix(count))
-                }
+        let queue = self.queue
+        listener.stateUpdateHandler = { update in
+            switch update {
+            case .ready:
+                state.value.withLock { $0.port = listener.port?.rawValue }
+                listener.stateUpdateHandler = nil
+                ready.signal()
+            case .failed:
+                listener.stateUpdateHandler = nil
+                ready.signal()
+            default: break
+            }
+        }
+        listener.newConnectionHandler = { connection in
+            let port = state.value.withLock { value -> UInt16? in
+                guard !value.stopping else { return nil }
+                value.connections.append(connection)
+                return value.port
+            }
+            guard let port else { connection.cancel(); return }
+            connection.start(queue: queue)
+            Self.receive(connection, state: state, port: port, reply: reply, accumulated: Data())
+            queue.asyncAfter(deadline: .now() + 2) { connection.cancel() }
+        }
+        listener.start(queue: queue)
+        guard ready.wait(timeout: .now() + 5) == .success,
+              let port = state.value.withLock({ $0.port }) else {
+            listener.newConnectionHandler = nil
+            listener.stateUpdateHandler = nil
+            listener.cancel()
+            throw FixtureError.listenerFailure
+        }
+        self.port = port
+    }
+
+    private static func receive(_ connection: NWConnection, state: SharedFixtureState, port: UInt16,
+                                reply: @escaping @Sendable (String) -> WireReply?, accumulated: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { bytes, _, complete, error in
+            var data = accumulated
+            if let bytes { data.append(bytes) }
+            guard error == nil, data.count <= 8192 else { connection.cancel(); return }
+            if data.range(of: Data("\r\n\r\n".utf8)) != nil {
                 let request = String(decoding: data, as: UTF8.self)
                 let path = request.split(separator: " ").dropFirst().first.map(String.init) ?? "/"
-                var status = "200 OK"
-                var headers = ""
-                var body = "ok"
+                var response = WireReply(status: "200 OK", body: "ok")
                 switch path {
-                case "/set": headers = "Set-Cookie: fixture=value; Path=/\r\n"
-                case "/inspect": body = request.lowercased().contains("\r\ncookie:") ? "present" : "absent"
-                case "/redirect": status = "302 Found"; headers = "Location: http://127.0.0.1:\(port)/target\r\n"
+                case "/set": response.headers = "Set-Cookie: fixture=value; Path=/\r\n"
+                case "/inspect": response.body = request.lowercased().contains("\r\ncookie:") ? "present" : "absent"
+                case "/redirect": response = WireReply(status: "302 Found", headers: "Location: http://127.0.0.1:\(port)/target\r\n")
                 case "/target": state.value.withLock { $0.targetRequests += 1 }
-                case "/cache": state.value.withLock { $0.cacheRequests += 1 }; headers = "Cache-Control: public, max-age=3600\r\n"
+                case "/cache":
+                    state.value.withLock { $0.cacheRequests += 1 }
+                    response.headers = "Cache-Control: public, max-age=3600\r\n"
                 default: break
                 }
-                if let custom = reply(request) {
-                    status = custom.status; headers = custom.headers; body = custom.body
-                }
-                let response = Data("HTTP/1.1 \(status)\r\n\(headers)Content-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)".utf8)
-                response.withUnsafeBytes { buffer in
-                    var offset = 0
-                    while offset < buffer.count {
-                        let sent = send(connection, buffer.baseAddress!.advanced(by: offset), buffer.count - offset, 0)
-                        if sent <= 0 { break }; offset += sent
-                    }
-                }
-                close(connection)
-            }
+                if let custom = reply(request) { response = custom }
+                let content = Data("HTTP/1.1 \(response.status)\r\n\(response.headers)Content-Length: \(response.body.utf8.count)\r\nConnection: close\r\n\r\n\(response.body)".utf8)
+                connection.send(content: content, completion: .contentProcessed { _ in connection.cancel() })
+            } else if complete { connection.cancel() }
+            else { receive(connection, state: state, port: port, reply: reply, accumulated: data) }
         }
     }
+
     func url(_ path: String) -> URL { URL(string: "http://127.0.0.1:\(port)\(path)")! }
     func counts() -> (target: Int, cache: Int) { state.value.withLock { ($0.targetRequests, $0.cacheRequests) } }
-    func stop() async {
-        state.value.withLock { $0.stopping = true }
-        let wake = socket(AF_INET, SOCK_STREAM, 0)
-        if wake >= 0 {
-            var address = sockaddr_in()
-            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-            address.sin_family = sa_family_t(AF_INET)
-            address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
-            address.sin_port = port.bigEndian
-            _ = withUnsafePointer(to: &address) { pointer in
-                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(wake, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
-            }
-            close(wake)
+    func stop() async throws {
+        let connections = state.value.withLock { value in
+            value.stopping = true
+            let connections = value.connections
+            value.connections.removeAll()
+            return connections
         }
-        await worker.value
+        listener.newConnectionHandler = nil
+        for connection in connections { connection.cancel() }
+        let cancelled = await withCheckedContinuation { continuation in
+            let completion = StopCompletion(continuation)
+            listener.stateUpdateHandler = { update in
+                if case .cancelled = update { completion.finish(true) }
+            }
+            listener.cancel()
+            queue.asyncAfter(deadline: .now() + 2) { completion.finish(false) }
+        }
+        listener.stateUpdateHandler = nil
+        guard cancelled else { throw FixtureError.stopTimedOut }
     }
 }
 
@@ -104,7 +134,7 @@ final class LoopbackFixture: Sendable {
         do { try await operation(fixture, session); result = .success(()) }
         catch { result = .failure(error) }
         session.invalidateAndCancel()
-        await fixture.stop()
+        try await fixture.stop()
         try result.get()
     }
     @Test func responseCookiesAreNotAutomaticallyReplayed() async throws {
