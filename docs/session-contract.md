@@ -35,3 +35,5 @@ actionlint 1.7.12のrunner一覧が公式`xcode-27` labelに追従していな�
 独立Reviewは同じ専用Simulatorの実Keychain6件も別途実行し、0 failuresで成功。Securityは独立host22件とsource、独立Simulator結果の監査を実施した。CI用スクリプトは実行ごとに新しい専用deviceを作成し、他deviceへアクセスせずfinallyで削除する。
 
 CIと同一の`python3 scripts/test_simulator.py`もローカルで成功（28件、exit 0）。新規作成したdeviceの削除をsimctl一覧で照合し、独立レビュー用の専用deviceも検証終了後にそのUDIDだけを削除した。
+
+初回CIはhost22件に成功したが、hosted imageにiOS27.2 runtimeが無く実Simulator工程を失敗として停止した。Apple公式`xcodebuild -downloadPlatform iOS -buildVersion 27.2 -architectureVariant arm64`を一時runnerのsetupに追加する（[公式導入方法](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components)）。ローカル既存runtimeやシステム設定は変更しない。未検証のSimulator工程をskip成功にしない。

@@ -31,5 +31,7 @@ jobs:
         run: |
           swift build
           swift test
+      - name: Install required Simulator runtime on the ephemeral runner
+        run: xcodebuild -downloadPlatform iOS -buildVersion 27.2 -architectureVariant arm64
       - name: Test real Keychain in an owned iOS 27.2 Simulator
         run: python3 scripts/test_simulator.py
