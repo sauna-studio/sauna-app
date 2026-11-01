@@ -14,8 +14,10 @@ import XCTest
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
-        var result: CFTypeRef?
-        XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, &result), errSecItemNotFound)
+        var result: CFTypeRef? = nil
+        // SecItem.h has no pointer-free copy overload; keep the initialized out-parameter local to this call.
+        let status = unsafe SecItemCopyMatching(query as CFDictionary, &result)
+        XCTAssertEqual(status, errSecItemNotFound)
     }
     private let scopes = SessionEnvironment.allCases.flatMap { environment in
         SessionProfile.allCases.map { SessionScope(environment: environment, profile: $0) }
@@ -45,8 +47,10 @@ import XCTest
                 kSecReturnAttributes as String: true,
                 kSecMatchLimit as String: kSecMatchLimitOne,
             ]
-            var result: CFTypeRef?
-            XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, &result), errSecSuccess)
+            var result: CFTypeRef? = nil
+            // SecItem.h requires this local out-parameter; a shared or stored pointer would escape its call lifetime.
+            let status = unsafe SecItemCopyMatching(query as CFDictionary, &result)
+            XCTAssertEqual(status, errSecSuccess)
             let attributes = try XCTUnwrap(result as? [String: Any])
             let accessibleIsDeviceOnly = (attributes[kSecAttrAccessible as String] as? String) == (kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
             XCTAssertTrue(accessibleIsDeviceOnly)

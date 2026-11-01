@@ -58,4 +58,20 @@ swift test --force-resolved-versions
 python3 scripts/test_simulator.py
 ```
 
-現時点のhost41件/5suiteに成功（旧format golden1件を追加）。Simulatorの自前harness policyと実Keychainを含む最終検証は、この変更PRの結果を参照する。旧PRの実測だけで今回のSimulator検証済みとはしない。
+現時点のhost41件/5suiteに成功（旧format golden1件を追加）。Xcodeの両自前targetも同じpolicyをDebug/Releaseへ設定する。Xcode27.2のinstalled Swift.xcspecに登録済みの5 feature設定と、未登録のImmutableWeakCapturesだけtarget限定OTHER_SWIFT_FLAGSを使う。`validate_swift_policy.py`はnative Xcode CLIで全target/configurationのeffective settingsを検証する。別途、実build logのcompiler invocationでも有効なflagを照合した。外部packageへtarget flagsを強制しない。
+
+## Security C interop boundary
+
+strictMemorySafetyを有効に保ち、`SecItemCopyMatching`の同期out-parameterを渡す3式（製品1、Simulator検証2）だけを`unsafe` expressionで監査対象として明示する。initialized local `CFTypeRef? = nil`は同期call中だけ参照し、pointerを保存・await越しに渡さない。installed iOS27.2 `Security.framework/Headers/SecItem.h`のretained-result契約に従い、既存のARC保持・status/attribute検査・namespace/CASを変えない。
+
+根拠は[Apple SecItemCopyMatching](https://developer.apple.com/documentation/security/secitemcopymatching(_:_:))と[Swift SE-0458 unsafe expression](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#unsafe-expression)。意味・ABIや自動的な安全証明を追加するものではなく、global unsafe flags・警告抑制・unchecked宣言へ広げない恒久的なC API境界である。Keychain providerを変更するための暫定回避とは扱わない。
+
+## 最終ローカル検証
+
+- SwiftPM host41件/5suite成功（両独立Review/Securityも別immutable snapshotで41件成功）。
+- 新policyを有効にした専用iOS27.2 Simulatorで実SecItem6件＋共通41件、47件成功。所有deviceを削除し一覧からの消失を確認した。独立Reviewも別所有deviceでSecItem6件を再実行して成功し、そのdeviceだけを削除した。
+- library / UIKit test host / test bundleの実compile invocationで6 feature・strictMemorySafety・warnings-as-errorsを確認した。effective settingsは両Xcode targetのDebug/Releaseでnonisolated。installedxcspecはこのdefaultではactorflagを出力しないため、MainActor default flagが無いことも照合した。
+- native JSONはApple公式`xcprojformatter`0.1.0のschema roundtripでbyte差分無し。独自JSON変換や生成Swift sourceの手編集は無い。
+- 最終Sources/Package/35pinsとhash一致するroot別snapshotで、稼働中の実API/PostgreSQL18へ両profileの復元→revalidate200/CSRFmemory→logout204/localclear→旧token401を実行し1test/0.112秒で成功。[Issue13の証跡](https://github.com/sauna-studio/sauna-app/issues/13#issuecomment-6552934619)に結果と所有fixture cleanupを記録した。host Keychainや既存サービスを変更せず、追加smoke testは製品repoへ入れていない。
+
+最新GitHub CI/Codexレビュー結果は実装PRを正本とする。以上の結果をnative Passkey UI/AASA/実機/本番domainや、未使用catalog全productの検証完了へ広げない。
