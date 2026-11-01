@@ -1,6 +1,6 @@
 # Apple session storage contract
 
-対象: [sauna-api #55](https://github.com/sauna-studio/sauna-api/issues/55) / 親 [#13](https://github.com/sauna-studio/sauna-api/issues/13)。これは保存・現ローカルcookie受理・通信設定の契約です。native Passkeyログイン全体やAPIクライアントの完成を意味しません。
+対象: [sauna-api #55](https://github.com/sauna-studio/sauna-api/issues/55) / 親 [#13](https://github.com/sauna-studio/sauna-api/issues/13)。これは保存・現ローカルcookie受理・通信設定の契約です。GET/session再検証とPOST/logoutの接続は追加した[固定API client](native-session-client.md)を参照してください。native Passkeyログイン全体やAPIクライアントの完成を意味しません。
 
 ## 保存と失効
 
@@ -16,7 +16,7 @@
 
 `SessionCookieContract`は現在の固定local backend `http://127.0.0.1:8080`、許可endpoint/status、profile別`__Host-`名、Secure/HttpOnly/SameSite=Strict/Path=/、Domainなし、正規tokenと期限を検査する純粋関数。複数Set-Cookieは個別値を保持して渡し、結合・折り畳み・重複属性は拒否する。production originは未設定として拒否する。storage scopeは保存namespaceであり、origin認可の代わりにならない。
 
-`makeEphemeralSession`はcookie自動保存・再送、credential storage、cacheを無効化し、redirectを拒否する。初期URLや呼出元による手動token添付までは制限しない。将来のAPIクライアントは固定Origin/endpointのrequest構築と安全なcookie応答受理・API再照合を統合する必要がある。現在はその統合や実native認証を検証済みとはしない。
+`makeEphemeralSession`はcookie自動保存・再送、credential storage、cacheを無効化し、redirectを拒否する。初期URLや呼出元による手動token添付までは制限しない。将来のAPIクライアントは固定Origin/endpointのrequest構築と安全なcookie応答受理・API再照合を統合する必要がある。GET/session再検証とPOST/logoutは追加clientが統合する。他operationと実native認証は未実装。
 
 ## 実測（2026-11-01）
 

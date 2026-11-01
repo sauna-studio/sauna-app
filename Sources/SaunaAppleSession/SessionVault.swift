@@ -51,11 +51,12 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
     public nonisolated var description: String { "SessionVault(<redacted>)" }
     public nonisolated var debugDescription: String { description }
     public nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
-    private let scope: SessionScope
+    public nonisolated let scope: SessionScope
     private let persistence: any SessionPersistence
     private var generation = UUID()
     private var current: (blob: StoredBlob, session: PersistedSession)?
     private var csrf: CSRFToken?
+    private var csrfExpiresAt: Date?
     private var blockedRevision: Data?
     private var restoreSuppressed = false
 
@@ -64,7 +65,7 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
     }
 
     public func beginAuthentication() throws -> SessionWriteTicket {
-        generation = UUID(); current = nil; csrf = nil
+        generation = UUID(); current = nil; csrf = nil; csrfExpiresAt = nil
         let revision = try persistence.read(scope: scope)?.revision
         return SessionWriteTicket(scope: scope, generation: generation, expectedRevision: revision)
     }
@@ -78,12 +79,12 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
         guard try persistence.replace(scope: scope, expectedRevision: ticket.expectedRevision, with: blob) else {
             throw SessionContractError.storageConflict
         }
-        current = (blob, session); csrf = csrfToken; blockedRevision = nil; restoreSuppressed = false
+        current = (blob, session); csrf = csrfToken; csrfExpiresAt = expiresAt; blockedRevision = nil; restoreSuppressed = false
         return lease(blob: blob, session: session)
     }
 
     public func restore(now: Date = .now) throws -> UnverifiedSession? {
-        generation = UUID(); current = nil; csrf = nil
+        generation = UUID(); current = nil; csrf = nil; csrfExpiresAt = nil
         guard !restoreSuppressed else { return nil }
         guard let blob = try persistence.read(scope: scope) else { return nil }
         guard blockedRevision != blob.revision,
@@ -96,9 +97,32 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
         return lease(blob: blob, session: session)
     }
 
-    public func confirmCSRF(_ csrfToken: CSRFToken, for lease: UnverifiedSession, now: Date = .now) throws {
+    func prepareRevalidation(_ lease: UnverifiedSession, now: Date) throws {
+        try Task.checkCancellation()
         try validate(lease, now: now)
-        csrf = csrfToken
+        csrf = nil; csrfExpiresAt = nil
+    }
+
+    func credentials(for lease: UnverifiedSession, now: Date) throws -> SessionRequestCredentials {
+        try Task.checkCancellation()
+        try validate(lease, now: now)
+        guard let csrf, let csrfExpiresAt, now < csrfExpiresAt else { throw SessionContractError.staleOperation }
+        return SessionRequestCredentials(token: lease.token, csrfToken: csrf, lease: lease)
+    }
+
+    public func confirmCSRF(_ csrfToken: CSRFToken, for lease: UnverifiedSession, now: Date = .now) throws {
+        try Task.checkCancellation()
+        try validate(lease, now: now)
+        csrf = csrfToken; csrfExpiresAt = lease.expiresAt
+    }
+
+    func confirmRevalidation(_ csrfToken: CSRFToken, for lease: UnverifiedSession, expiresAt: Date,
+                             clock: @Sendable () -> Date) throws {
+        try Task.checkCancellation()
+        let now = clock()
+        try validate(lease, now: now)
+        guard expiresAt > now, expiresAt <= lease.expiresAt else { throw SessionContractError.staleOperation }
+        csrf = csrfToken; csrfExpiresAt = expiresAt
     }
 
     public func requestCredentials(now: Date = .now) throws -> SessionRequestCredentials? {
@@ -106,7 +130,7 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
         let lease = lease(blob: current.blob, session: current.session)
         do { try validate(lease, now: now) }
         catch SessionContractError.staleOperation { try invalidate(lease); return nil }
-        guard let csrf else { return nil }
+        guard let csrf, let csrfExpiresAt, now < csrfExpiresAt else { return nil }
         return SessionRequestCredentials(token: lease.token, csrfToken: csrf, lease: lease)
     }
 
@@ -114,13 +138,13 @@ public actor SessionVault: CustomStringConvertible, CustomDebugStringConvertible
     @discardableResult public func invalidate(_ lease: UnverifiedSession) throws -> Bool {
         guard lease.scope == scope, lease.generation == generation,
               current?.blob.revision == lease.revision else { return false }
-        generation = UUID(); current = nil; csrf = nil; blockedRevision = lease.revision; restoreSuppressed = true
+        generation = UUID(); current = nil; csrf = nil; csrfExpiresAt = nil; blockedRevision = lease.revision; restoreSuppressed = true
         return try persistence.delete(scope: scope, revision: lease.revision)
     }
 
     /// This clears only local storage; server-side logout is a separate API operation.
     public func removeLocalSession() throws {
-        generation = UUID(); current = nil; csrf = nil; restoreSuppressed = true
+        generation = UUID(); current = nil; csrf = nil; csrfExpiresAt = nil; restoreSuppressed = true
         guard let blob = try persistence.read(scope: scope) else { return }
         blockedRevision = blob.revision
         let removed = try persistence.delete(scope: scope, revision: blob.revision)

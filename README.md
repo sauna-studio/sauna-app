@@ -1,6 +1,6 @@
 # sauna-app
 
-利用者向けSwiftUI iOS・iPadOSアプリ（27.2以上）の開発リポジトリです。現在は画面の実装に先立ち、`SaunaAppleSession` SwiftPMライブラリのローカル保存契約を実装しています。
+利用者向けSwiftUI iOS・iPadOSアプリ（27.2以上）の開発リポジトリです。現在は画面の実装に先立ち、`SaunaAppleSession` SwiftPMライブラリのローカル保存契約と固定APIでのセッション再検証・logoutを実装しています。
 
 Sauna API / PostgreSQLを業務データの正本とし、認証はPasskeyのみを使います。予約・決済・チャットの画面、AuthenticationServicesによるPasskey操作、Associated Domainsと本番API接続はまだ実装していません（[app #2](https://github.com/sauna-studio/sauna-app/issues/2)）。Vintage・Pumpkinはデザイン参照であり、利用条件未確認の資産はコピーしません。
 
@@ -8,15 +8,17 @@ Sauna API / PostgreSQLを業務データの正本とし、認証はPasskeyのみ
 
 セッショントークンはiOSの`WhenUnlockedThisDeviceOnly` Keychainへ保存し、環境・customer/staff・アプリnamespaceで分離します。CSRFはメモリだけに保持します。復元したトークンは未検証であり、ユーザー情報・施設権限を生成しません。API再照合前に認証済みと表示してはいけません。
 
-[保存と通信の境界・実測結果](docs/session-contract.md)を参照してください。SwiftPMのmacOS 27.0対応はKeychainを含まないホスト検証用であり、macOS製品を提供するものではありません。
+[保存契約](docs/session-contract.md)と[固定APIクライアント・生成手順](docs/native-session-client.md)を参照してください。SwiftPMのmacOS 27.0対応はKeychainを含まないホスト検証用であり、macOS製品を提供するものではありません。
 
 ## Verification
 
 Swift 6.4 / Xcode 27.2とiOS 27.2 Simulator runtimeが必要です。
 
 ```sh
-swift build
-swift test
+python3 scripts/validate_openapi.py --verify-upstream
+swift package --force-resolved-versions --allow-writing-to-package-directory generate-code-from-openapi --target SaunaAppleSession
+swift build --force-resolved-versions
+swift test --force-resolved-versions
 python3 scripts/test_simulator.py
 ```
 
