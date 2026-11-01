@@ -43,6 +43,21 @@ class CompatiblePairTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 choose_pair([value], [device(IPHONE)])
 
+    def test_canonical_uppercase_uuid_is_used_for_all_owned_device_operations(self):
+        created = '4130116c-e074-4a80-9403-def2e5e2b45e'
+        expected = created.upper()
+        inventory = [json.dumps({'runtimes': [runtime()]}),
+                     json.dumps({'devicetypes': [device(IPHONE)]}), created, None, None, None, None]
+        with patch.object(test_simulator, 'run', side_effect=inventory) as command:
+            with patch.object(test_simulator.subprocess, 'run') as shutdown:
+                test_simulator.main()
+                calls = [call.args for call in command.call_args_list]
+                self.assertEqual(calls[3], ('xcrun', 'simctl', 'boot', expected))
+                self.assertEqual(calls[4], ('xcrun', 'simctl', 'bootstatus', expected, '-b'))
+                self.assertIn('platform=iOS Simulator,id=' + expected, calls[5])
+                self.assertEqual(calls[6], ('xcrun', 'simctl', 'delete', expected))
+                self.assertEqual(shutdown.call_args.args[0], ['xcrun', 'simctl', 'shutdown', expected])
+
     def test_invalid_created_uuid_cannot_reach_boot_or_cleanup(self):
         inventory = [json.dumps({'runtimes': [runtime()]}),
                      json.dumps({'devicetypes': [device(IPHONE)]}), 'all']

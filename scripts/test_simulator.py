@@ -35,7 +35,7 @@ def main():
     runtime, device_type = choose_pair(runtimes, device_types)
     print('Testing compatible Simulator pair:', runtime, device_type, flush=True)
     device = str(uuid.UUID(run('xcrun', 'simctl', 'create', 'Sauna-Session-Tests-' + str(uuid.uuid4()),
-                               device_type, runtime, capture=True).strip()))
+                               device_type, runtime, capture=True).strip())).upper()
     try:
         run('xcrun', 'simctl', 'boot', device)
         run('xcrun', 'simctl', 'bootstatus', device, '-b')

@@ -54,4 +54,6 @@ Xcode harnessは以前の直接Sources frameworkから、正本のlocal SwiftPM 
 - 独立Review/Securityは別snapshotでhostテストとsourceを検証する。最終結果はPRに集約する。
 - rootの別snapshotで、稼働中の実Sauna API/PostgreSQL18へ両profileのpublic client再検証→logout→旧token401を実行し、1test/0.135秒で成功した。最終source hash一致を照合済み。検証用追加test/平文fixtureは製品へ追加していない。初期fixture準備失敗分の所有者不明な残存可能性と、所有UUIDだけを削除するcleanup方針は[Issue10の証跡](https://github.com/sauna-studio/sauna-app/issues/10#issuecomment-6552590700)に記録し、完全な掃除済みと推測しない。
 
-初回PR11 CIはdevice-specific27.2 runtimeを固定iPhone17と組み合わせてしまい、create時にIncompatible deviceで停止した（[app #12](https://github.com/sauna-studio/sauna-app/issues/12)）。versionだけの先頭選択を改め、全available iOS27.2 runtimeのadvertised supportedDeviceTypesとinstalled typesの互換pairを選ぶ。対応pair無しは失敗とし、古いOSやskipへ切り替えない。8つのinventory-only回帰をCIへ追加し、owned deviceのUUID確認・精密cleanupを維持する。
+初回PR11 CIはdevice-specific27.2 runtimeを固定iPhone17と組み合わせてしまい、create時にIncompatible deviceで停止した（[app #12](https://github.com/sauna-studio/sauna-app/issues/12)）。versionだけの先頭選択を改め、全available iOS27.2 runtimeのadvertised supportedDeviceTypesとinstalled typesの互換pairを選ぶ。対応pair無しは失敗とし、古いOSやskipへ切り替えない。9つのinventory-only回帰をCIへ追加し、owned deviceのUUID確認・精密cleanupを維持する。
+
+UUIDの形式検証後もXcodeのdestination照合に合わせてuppercase表記を維持する。lowercaseではsimctlが受理してもxcodebuildがdeviceを発見できないことをローカル実行で確認し、全owned操作で同じuppercase UUIDを使うcommand-mock回帰を追加した。
