@@ -1,19 +1,27 @@
 # sauna-app
-Sauna Studio app
 
+利用者向けSwiftUI iOS・iPadOSアプリ（27.2以上）の開発リポジトリです。現在は画面の実装に先立ち、`SaunaAppleSession` SwiftPMライブラリのローカル保存契約を実装しています。
 
-## Scope
+Sauna API / PostgreSQLを業務データの正本とし、認証はPasskeyのみを使います。予約・決済・チャットの画面、AuthenticationServicesによるPasskey操作、Associated Domainsと本番API接続はまだ実装していません（[app #2](https://github.com/sauna-studio/sauna-app/issues/2)）。Vintage・Pumpkinはデザイン参照であり、利用条件未確認の資産はコピーしません。
 
-利用者向けSwiftUI iOS・iPadOSアプリ。iOS・iPadOS 27.2以上。予約・決済・チャットのUIを提供する。
+## Session contract
 
-## Architecture
+セッショントークンはiOSの`WhenUnlockedThisDeviceOnly` Keychainへ保存し、環境・customer/staff・アプリnamespaceで分離します。CSRFはメモリだけに保持します。復元したトークンは未検証であり、ユーザー情報・施設権限を生成しません。API再照合前に認証済みと表示してはいけません。
 
-Sauna APIを正本とし、Passkeyでログインする。TweetbotのVintage・Pumpkinをデザイン参照にする。利用条件の未確認な資産はコピーしない。
+[保存と通信の境界・実測結果](docs/session-contract.md)を参照してください。SwiftPMのmacOS 27.0対応はKeychainを含まないホスト検証用であり、macOS製品を提供するものではありません。
 
 ## Verification
 
-実装後は対象Xcodeでbuild/testを実行し、Xcode MCP・Simulatorで主要導線を確認する。古いOS向けの互換分岐は追加しない。
+Swift 6.4 / Xcode 27.2とiOS 27.2 Simulator runtimeが必要です。
 
-初期PRは開発基盤のみを追加します。CIはRepository policy検査を実行し、業務機能の実装や動作検証はまだ含みません。
+```sh
+swift build
+swift test
+python3 scripts/test_simulator.py
+```
 
-[AGENTS.md](AGENTS.md) と [CONTRIBUTING.md](CONTRIBUTING.md) に従い、Issueの依存関係を満たしてから独立Review Agentを並行起動して実装します。共通規則適用元: [sauna-studio/.github@075c6695309d](https://github.com/sauna-studio/.github/tree/075c6695309d28baad2dc1391d7d3821b81142cc)。
+ホストテストはfake persistenceだけを使用します。Simulatorスクリプトは専用deviceを作成し、実SecItem検証後にそのdeviceだけを削除します。テストhostは証明書・秘密鍵・Teamを使わないad-hoc署名です。既存のホストKeychainや他のSimulatorを操作しません。
+
+CIはrepository policyに加え同じbuild/testを実行します。公式の`xcode-27` runnerでXcode 27.2を明示選択します。runnerのXcodeは現在RC build 27B48、ローカル実測はfinal 27B52であり、同一buildとは扱いません（[公式runner仕様](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)）。
+
+[AGENTS.md](AGENTS.md)と[CONTRIBUTING.md](CONTRIBUTING.md)に従い、独立Review / Security ReviewとGitHub Codexレビューを満たしてからマージします。

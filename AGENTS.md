@@ -88,3 +88,11 @@ Sauna APIを正本とし、Passkeyでログインする。TweetbotのVintage・P
 このGitHub上のレビューは、実装中の独立Review Agent並行起動と実ビルド・テストに追加する確認である。レビュー依頼だけで成功扱いにしない。自動返信・同じ依頼の連投を避け、レビューroundと対象commitをPRへ記録する。
 
 共通追加規則の適用元: `sauna-studio/.github@e24383d0f9fe6784293e1b781edffd08750f0a20` (`policies/github-codex-review.md`)。
+
+## Apple session library検証
+
+`SaunaAppleSession`はSwift 6.4の保存契約ライブラリ。iOS/iPadOS製品minimumは27.2、macOS27.0はfake-only host tests用。`swift build` / `swift test` / `python3 scripts/test_simulator.py`を実行する。CIはpolicyに加え実コード・実Simulatorを検証する。
+
+既存ホストKeychainに触れない。SecItem backendはiOSだけでコンパイルし、実検証は専用Simulator・テスト固有namespaceだけを使用する。testhostのad-hoc署名は証明書・秘密鍵・Teamを使わない。共有access groupや弱いaccessibilityでテストを通さない。スクリプトは自分が作ったdeviceだけを削除し、`shutdown all`を使わない。
+
+復元tokenは未検証、CSRFはメモリだけ。storage locked/unavailableと不在を区別する。logout・expiry・401はrevisionを照合し、新しいsessionを古い処理で消さない。永続削除失敗は成功と表示せず、同process再復元を抑止する。保存契約をnative Passkey・本番API接続完成と記録しない。詳細は`docs/session-contract.md`を更新する。
