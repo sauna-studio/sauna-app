@@ -1,3 +1,4 @@
+struct WireReply: Sendable { let status: String; var headers = ""; var body = "" }
 import Darwin
 import Foundation
 import Synchronization
@@ -6,12 +7,12 @@ import Testing
 
 private enum FixtureError: Error { case socketFailure }
 private final class SharedFixtureState: Sendable { let value = Mutex(LoopbackFixture.State()) }
-private final class LoopbackFixture: Sendable {
+final class LoopbackFixture: Sendable {
     struct State: Sendable { var stopping = false; var targetRequests = 0; var cacheRequests = 0 }
     let port: UInt16
     private let state = SharedFixtureState()
     private let worker: Task<Void, Never>
-    init() throws {
+    init(reply: @escaping @Sendable (String) -> WireReply? = { _ in nil }) throws {
         let listener = socket(AF_INET, SOCK_STREAM, 0)
         guard listener >= 0 else { throw FixtureError.socketFailure }
         var address = sockaddr_in()
@@ -59,6 +60,9 @@ private final class LoopbackFixture: Sendable {
                 case "/target": state.value.withLock { $0.targetRequests += 1 }
                 case "/cache": state.value.withLock { $0.cacheRequests += 1 }; headers = "Cache-Control: public, max-age=3600\r\n"
                 default: break
+                }
+                if let custom = reply(request) {
+                    status = custom.status; headers = custom.headers; body = custom.body
                 }
                 let response = Data("HTTP/1.1 \(status)\r\n\(headers)Content-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)".utf8)
                 response.withUnsafeBytes { buffer in

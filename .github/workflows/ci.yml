@@ -27,10 +27,16 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
+      - name: Verify pinned contract and generated sources
+        run: |
+          python3 scripts/validate_openapi.py --verify-upstream
+          swift package --force-resolved-versions --allow-writing-to-package-directory generate-code-from-openapi --target SaunaAppleSession
+          git diff --exit-code -- Sources/SaunaAppleSession/GeneratedSources
+          test -z "$(git ls-files --others --exclude-standard -- Sources/SaunaAppleSession/GeneratedSources)"
       - name: Build and test portable contract (fake persistence only)
         run: |
-          swift build
-          swift test
+          swift build --force-resolved-versions
+          swift test --force-resolved-versions
       - name: Install required Simulator runtime on the ephemeral runner
         run: xcodebuild -downloadPlatform iOS -buildVersion 27.2 -architectureVariant arm64
       - name: Test real Keychain in an owned iOS 27.2 Simulator

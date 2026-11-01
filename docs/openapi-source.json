@@ -1,0 +1,10 @@
+{
+  "repository": "sauna-studio/sauna-api",
+  "commit": "6e0c0497b2cebc86ab8ee801f4cfeaad5736e4bc",
+  "path": "Sources/SaunaAPIContract/openapi.yaml",
+  "sha256": "e680f9e4b1ccd5ba772721230a849893748dca2a393c2c910c54a60a6bd081eb",
+  "operations": [
+    "getAuthSession",
+    "logoutSession"
+  ]
+}

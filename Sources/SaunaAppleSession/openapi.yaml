@@ -1,0 +1,1212 @@
+openapi: 3.1.0
+info:
+  title: Sauna Studio API
+  version: 1.0.0
+  description: Public service status and release information. This contract does not expose hostnames, source revisions,
+    deployment environments, or dependency status.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+- url: /
+  description: The origin serving this API.
+security: []
+tags:
+- name: Service
+  description: Public service metadata without customer or operational details.
+- name: Authentication
+  description: Local Passkey registration, signed UV authentication and revocable sessions.
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check whether the API can answer requests
+      description: A public liveness check, not database readiness or a diagnostic endpoint. A healthy API returns
+        only the fixed public status. No authentication is required.
+      tags:
+      - Service
+      security: []
+      responses:
+        '200':
+          description: The API can answer requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                healthy:
+                  value:
+                    status: ok
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /version:
+    get:
+      operationId: getVersion
+      summary: Read public API and application release versions
+      description: Returns semantic release versions only. Source revisions, build metadata, hostnames, runtime
+        versions, and deployment environments are excluded. No authentication is required.
+      tags:
+      - Service
+      security: []
+      responses:
+        '200':
+          description: Public release version information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+              examples:
+                release:
+                  value:
+                    apiVersion: 1.0.0
+                    version: 0.1.0
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/passkeys/registration/options:
+    post:
+      operationId: beginPasskeyRegistration
+      tags:
+      - Authentication
+      summary: beginPasskeyRegistration
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '200':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyOptionsResponse'
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security: []
+  /auth/passkeys/registration/finish:
+    post:
+      operationId: finishPasskeyRegistration
+      tags:
+      - Authentication
+      summary: finishPasskeyRegistration
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '204':
+          description: Successful local authentication operation.
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyFinishRequest'
+      security: []
+  /auth/passkeys/authentication/options:
+    post:
+      operationId: beginPasskeyAuthentication
+      tags:
+      - Authentication
+      summary: beginPasskeyAuthentication
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '200':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyOptionsResponse'
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security: []
+  /auth/passkeys/authentication/finish:
+    post:
+      operationId: finishPasskeyAuthentication
+      tags:
+      - Authentication
+      summary: finishPasskeyAuthentication
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '200':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyFinishRequest'
+      security: []
+  /auth/session:
+    get:
+      operationId: getAuthSession
+      tags:
+      - Authentication
+      summary: getAuthSession
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '200':
+          description: Successful local authentication operation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+  /auth/logout:
+    post:
+      operationId: logoutSession
+      tags:
+      - Authentication
+      summary: logoutSession
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '204':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+  /auth/sessions/revoke-all:
+    post:
+      operationId: revokeAllSessions
+      tags:
+      - Authentication
+      summary: revokeAllSessions
+      description: Local-only origin policy. Registration does not issue a session. Session issuance requires a
+        valid signed assertion with user verification. The exact Origin selects the customer/staff host cookie.
+        Flow cookies bind ceremonies.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '204':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+  /auth/passkeys:
+    get:
+      operationId: listPasskeys
+      tags:
+      - Authentication
+      summary: List the current account passkeys
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '200':
+          description: Account-scoped credential management response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedPasskeys'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+  /auth/passkeys/addition/authorization/options:
+    post:
+      operationId: beginPasskeyAdditionAuthorization
+      tags:
+      - Authentication
+      summary: Request fresh UV to add a passkey
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '200':
+          description: Account-scoped credential management response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyOptionsResponse'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+  /auth/passkeys/addition/authorization/finish:
+    post:
+      operationId: finishPasskeyAdditionAuthorization
+      tags:
+      - Authentication
+      summary: Authorize one account-bound passkey registration
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '200':
+          description: Account-scoped credential management response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyOptionsResponse'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyFinishRequest'
+  /auth/passkeys/addition/finish:
+    post:
+      operationId: finishPasskeyAddition
+      tags:
+      - Authentication
+      summary: Register the additional passkey and revoke all sessions
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '204':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyFinishRequest'
+  /auth/passkeys/revocation/options:
+    post:
+      operationId: beginPasskeyRevocation
+      tags:
+      - Authentication
+      summary: Request fresh UV from a different passkey
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '200':
+          description: Account-scoped credential management response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyOptionsResponse'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyRevocationRequest'
+  /auth/passkeys/revocation/finish:
+    post:
+      operationId: finishPasskeyRevocation
+      tags:
+      - Authentication
+      summary: Revoke the bound passkey and all account sessions
+      description: Local authenticated credential management. Every write requires the current session and CSRF.
+        A fresh action-bound signed UV assertion authorizes addition or revocation. Successful changes revoke all
+        account sessions and require login again. Only a different active credential may authorize revocation; the
+        last active credential cannot be revoked.
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          enum:
+          - http://localhost:5173
+          - http://localhost:5174
+      - name: X-Sauna-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 43
+      responses:
+        '204':
+          description: Successful local authentication operation.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Secure HttpOnly SameSite=Strict host-only flow/session cookie.
+        '400':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '401':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '403':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '413':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '429':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+        '503':
+          description: Fixed authentication error without internal details.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationProblem'
+      security:
+      - CustomerSession: []
+      - StaffSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyFinishRequest'
+components:
+  responses:
+    ServiceUnavailable:
+      description: The service is temporarily unavailable; no internal details are returned.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ServiceUnavailableProblem'
+          examples:
+            unavailable:
+              value:
+                type: about:blank
+                title: Service Unavailable
+                status: 503
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          description: A fixed liveness status; no dependency information is included.
+    Version:
+      type: object
+      additionalProperties: false
+      required:
+      - apiVersion
+      - version
+      properties:
+        apiVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\s\S])
+          description: The public API contract release; never a source revision.
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\s\S])
+          description: The public application release, without prerelease or build metadata.
+    ServiceUnavailableProblem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      description: A restricted RFC 9457 problem with a fixed public message and no exception details.
+      properties:
+        type:
+          type: string
+          enum:
+          - about:blank
+        title:
+          type: string
+          enum:
+          - Service Unavailable
+        status:
+          type: integer
+          enum:
+          - 503
+    PasskeyOptionsResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - challengeID
+      - publicKey
+      properties:
+        challengeID:
+          type: string
+          format: uuid
+        publicKey:
+          type: object
+          additionalProperties: true
+    PasskeyFinishRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - challengeID
+      - credentialJSON
+      properties:
+        challengeID:
+          type: string
+          format: uuid
+        credentialJSON:
+          type: string
+          maxLength: 65536
+          description: JSON.stringify of the WebAuthn credential.toJSON() result. Original clientDataJSON bytes
+            remain encoded within it.
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required:
+      - userID
+      - expiresAtUnixSeconds
+      - csrfToken
+      properties:
+        userID:
+          type: string
+          format: uuid
+        expiresAtUnixSeconds:
+          type: integer
+          format: int64
+        csrfToken:
+          type: string
+          minLength: 43
+          maxLength: 43
+    AuthenticationProblem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+          enum:
+          - about:blank
+        title:
+          type: string
+          enum:
+          - Bad Request
+          - Unauthorized
+          - Forbidden
+          - Payload Too Large
+          - Too Many Requests
+          - Service Unavailable
+        status:
+          type: integer
+          enum:
+          - 400
+          - 401
+          - 403
+          - 413
+          - 429
+          - 503
+    PasskeyRevocationRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - credentialID
+      properties:
+        credentialID:
+          type: string
+          minLength: 2
+          maxLength: 1364
+          pattern: ^[A-Za-z0-9_-]+$
+          description: Canonical base64url ID of an active credential belonging to this account.
+    ManagedPasskey:
+      type: object
+      additionalProperties: false
+      required:
+      - credentialID
+      - createdAtUnixSeconds
+      - isCurrentSessionCredential
+      properties:
+        credentialID:
+          type: string
+          maxLength: 1364
+        createdAtUnixSeconds:
+          type: integer
+          format: int64
+        lastUsedAtUnixSeconds:
+          type: integer
+          format: int64
+        isCurrentSessionCredential:
+          type: boolean
+    ManagedPasskeys:
+      type: object
+      additionalProperties: false
+      required:
+      - credentials
+      properties:
+        credentials:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ManagedPasskey'
+  securitySchemes:
+    CustomerSession:
+      type: apiKey
+      in: cookie
+      name: __Host-sauna-customer-session
+    StaffSession:
+      type: apiKey
+      in: cookie
+      name: __Host-sauna-staff-session

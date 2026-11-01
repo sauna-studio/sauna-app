@@ -26,6 +26,7 @@ def main():
         run('xcrun', 'simctl', 'bootstatus', device, '-b')
         run('xcodebuild', '-project', 'Tests/SessionSimulatorHarness/SessionSimulatorHarness.xcodeproj',
             '-scheme', 'SessionSimulatorHarness', '-configuration', 'Debug',
+            '-onlyUsePackageVersionsFromResolvedFile',
             '-destination', 'platform=iOS Simulator,id=' + device,
             '-derivedDataPath', '.build/SimulatorDerivedData',
             'CODE_SIGNING_ALLOWED=YES', 'CODE_SIGN_IDENTITY=-', 'DEVELOPMENT_TEAM=', 'test')

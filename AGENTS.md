@@ -96,3 +96,9 @@ Sauna APIを正本とし、Passkeyでログインする。TweetbotのVintage・P
 既存ホストKeychainに触れない。SecItem backendはiOSだけでコンパイルし、実検証は専用Simulator・テスト固有namespaceだけを使用する。testhostのad-hoc署名は証明書・秘密鍵・Teamを使わない。共有access groupや弱いaccessibilityでテストを通さない。スクリプトは自分が作ったdeviceだけを削除し、`shutdown all`を使わない。
 
 復元tokenは未検証、CSRFはメモリだけ。storage locked/unavailableと不在を区別する。logout・expiry・401はrevisionを照合し、新しいsessionを古い処理で消さない。永続削除失敗は成功と表示せず、同process再復元を抑止する。保存契約をnative Passkey・本番API接続完成と記録しない。詳細は`docs/session-contract.md`を更新する。
+
+## Native session clientと生成
+
+public `SessionClient(vault:)`はvault scopeを唯一のprofile/environment源にし、固定local backendと2operationだけを許可する。production未設定はdeny。原文OpenAPI snapshot/sourcehashを`python3 scripts/validate_openapi.py --verify-upstream`で照合し、公式command pluginで再生成する。生成物を手編集しない。`swift build/test --force-resolved-versions`と専用Simulator、生成差分・両lockのruntime pins一致を検証する。
+
+Originはbackend originと異なるprofile別localhost5173/5174。cookieとOriginの生成搬送制約はAPI#51を追跡する。一般的なpercent decode・任意URL/transportのpublic注入は追加しない。raw ClientError/DecodingError/HTTPBody/underlyingを公開エラー・ログへ出さない。16KiB decoder入力上限をwireメモリ上限と記録しない。詳しい更新・検証手順は`docs/native-session-client.md`。
