@@ -9,6 +9,7 @@ OpenAPI正本は`sauna-api@6e0c0497b2cebc86ab8ee801f4cfeaad5736e4bc`の`Sources/
 依存はGenerator 1.14.3 / Runtime 1.13.3 / URLSession 1.4.0 / HTTPTypes 1.8.0をexact指定する。URLSession 1.4.0は調査時の[公式最新安定release](https://github.com/apple/swift-openapi-urlsession/releases/tag/1.4.0)。root `Package.resolved`は生成toolの依存も含む。Xcodeのlocal package consumerはruntimeの4依存だけを解決するため、workspace lockのruntime pinsがroot lockと同一であることを検証する。
 
 ```sh
+python3 scripts/test_simulator_selection.py
 python3 scripts/validate_openapi.py --verify-upstream
 swift package --force-resolved-versions --allow-writing-to-package-directory generate-code-from-openapi --target SaunaAppleSession
 git diff --exit-code -- Sources/SaunaAppleSession/GeneratedSources
@@ -52,3 +53,5 @@ Xcode harnessは以前の直接Sources frameworkから、正本のlocal SwiftPM 
 - 再生成9file差分無し、immutable API snapshot/hash、両lock runtime pins、actionlint、diff検査成功。新しい未追跡生成.swiftを入れた負例もCI検査により拒否する。
 - 独立Review/Securityは別snapshotでhostテストとsourceを検証する。最終結果はPRに集約する。
 - rootの別snapshotで、稼働中の実Sauna API/PostgreSQL18へ両profileのpublic client再検証→logout→旧token401を実行し、1test/0.135秒で成功した。最終source hash一致を照合済み。検証用追加test/平文fixtureは製品へ追加していない。初期fixture準備失敗分の所有者不明な残存可能性と、所有UUIDだけを削除するcleanup方針は[Issue10の証跡](https://github.com/sauna-studio/sauna-app/issues/10#issuecomment-6552590700)に記録し、完全な掃除済みと推測しない。
+
+初回PR11 CIはdevice-specific27.2 runtimeを固定iPhone17と組み合わせてしまい、create時にIncompatible deviceで停止した（[app #12](https://github.com/sauna-studio/sauna-app/issues/12)）。versionだけの先頭選択を改め、全available iOS27.2 runtimeのadvertised supportedDeviceTypesとinstalled typesの互換pairを選ぶ。対応pair無しは失敗とし、古いOSやskipへ切り替えない。8つのinventory-only回帰をCIへ追加し、owned deviceのUUID確認・精密cleanupを維持する。
