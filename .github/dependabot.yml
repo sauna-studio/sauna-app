@@ -7,16 +7,3 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
-
-  - package-ecosystem: swift
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      # Update the generator, runtime, and HTTP adapter together.
-      openapi:
-        patterns:
-          - "*swift-openapi-*"
-    cooldown:
-      default-days: 7
-    open-pull-requests-limit: 5
