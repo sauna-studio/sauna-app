@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Inventory-only regression tests. No Simulator or Keychain operation is executed."""
 import json
+import subprocess
 import unittest
 from unittest.mock import patch
 import test_simulator
@@ -79,6 +80,68 @@ class CompatiblePairTests(unittest.TestCase):
     def test_other_product_families_are_not_selected(self):
         with self.assertRaises(SystemExit):
             choose_pair([runtime(devices=[device('watch', 'Apple Watch')])], [device('watch')])
+
+
+class RuntimeProvisioningTests(unittest.TestCase):
+    download = ('xcodebuild', '-downloadPlatform', 'iOS', '-buildVersion', '27.2', '-architectureVariant', 'arm64')
+
+    def existing(self):
+        return [json.dumps({'runtimes': [runtime()]}), json.dumps({'devicetypes': [device(IPHONE)]})]
+
+    def missing(self):
+        return [json.dumps({'runtimes': []}), json.dumps({'devicetypes': [device(IPHONE)]})]
+
+    def test_ensure_cli_does_not_download_create_or_boot_when_pair_exists(self):
+        with patch.object(test_simulator, 'run', side_effect=self.existing()) as command:
+            test_simulator.cli(['--ensure-runtime'])
+        self.assertEqual([call.args for call in command.call_args_list], [
+            ('xcrun', 'simctl', 'list', 'runtimes', '--json'),
+            ('xcrun', 'simctl', 'list', 'devicetypes', '--json')])
+
+    def test_missing_pair_downloads_once_and_rechecks_both_inventories(self):
+        with patch.object(test_simulator, 'run', side_effect=self.missing() + [None] + self.existing()) as command:
+            self.assertEqual(test_simulator.ensure_runtime(), (RUNTIME, IPHONE))
+        self.assertEqual([call.args for call in command.call_args_list], [
+            ('xcrun', 'simctl', 'list', 'runtimes', '--json'),
+            ('xcrun', 'simctl', 'list', 'devicetypes', '--json'), self.download,
+            ('xcrun', 'simctl', 'list', 'runtimes', '--json'),
+            ('xcrun', 'simctl', 'list', 'devicetypes', '--json')])
+
+    def test_download_failure_is_not_ignored_or_rechecked_as_success(self):
+        failure = subprocess.CalledProcessError(70, self.download)
+        with patch.object(test_simulator, 'run', side_effect=self.missing() + [failure]) as command:
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                test_simulator.ensure_runtime()
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(command.call_count, 3)
+
+    def test_download_success_without_a_compatible_pair_still_fails(self):
+        with patch.object(test_simulator, 'run', side_effect=self.missing() + [None] + self.missing()) as command:
+            with self.assertRaises(test_simulator.MissingCompatiblePair):
+                test_simulator.ensure_runtime()
+        self.assertEqual(command.call_count, 5)
+
+    def test_invalid_json_is_not_treated_as_a_missing_runtime(self):
+        with patch.object(test_simulator, 'run', return_value='{invalid') as command:
+            with self.assertRaises(json.JSONDecodeError):
+                test_simulator.ensure_runtime()
+        self.assertEqual(command.call_count, 1)
+
+    def test_invalid_inventory_structure_is_not_treated_as_a_missing_runtime(self):
+        for value in [[], {}, {'runtimes': 'invalid'}, {'runtimes': [None]}]:
+            with self.subTest(value=value), patch.object(test_simulator, 'run', return_value=json.dumps(value)) as command:
+                with self.assertRaises(ValueError):
+                    test_simulator.ensure_runtime()
+                self.assertEqual(command.call_count, 1)
+
+    def test_inventory_command_failure_cannot_trigger_download(self):
+        failure = subprocess.CalledProcessError(1, ['xcrun', 'simctl', 'list'])
+        for results in [[failure], [self.existing()[0], failure]]:
+            with self.subTest(results=results), patch.object(test_simulator, 'run', side_effect=results) as command:
+                with self.assertRaises(subprocess.CalledProcessError) as raised:
+                    test_simulator.ensure_runtime()
+                self.assertIs(raised.exception, failure)
+                self.assertNotIn(self.download, [call.args for call in command.call_args_list])
 
 
 if __name__ == '__main__':
