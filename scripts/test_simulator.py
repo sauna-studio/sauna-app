@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run session tests on an owned, temporary iOS 27.2 Simulator."""
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -11,6 +12,10 @@ ROOT = Path(__file__).resolve().parent.parent
 def run(*args, capture=False):
     return subprocess.run(args, cwd=ROOT, check=True, text=True,
                           stdout=subprocess.PIPE if capture else None).stdout
+
+
+class MissingCompatiblePair(SystemExit):
+    pass
 
 
 def choose_pair(runtimes, device_types):
@@ -25,14 +30,33 @@ def choose_pair(runtimes, device_types):
             if device_id in installed and device.get('productFamily') in ('iPhone', 'iPad'):
                 pairs.append((identifier, device_id))
     if not pairs:
-        raise SystemExit('An available iOS 27.2 runtime and an installed compatible device type are required; no test was skipped.')
+        raise MissingCompatiblePair('An available iOS 27.2 runtime and an installed compatible device type are required; no test was skipped.')
     return min(pairs, key=lambda pair: (pair[1] != 'com.apple.CoreSimulator.SimDeviceType.iPhone-17', pair))
 
 
+def inventory(kind):
+    value = json.loads(run('xcrun', 'simctl', 'list', kind, '--json', capture=True))
+    if not isinstance(value, dict) or not isinstance(value.get(kind), list) or any(not isinstance(item, dict) for item in value[kind]):
+        raise ValueError('Simulator inventory must contain an object list for ' + kind)
+    return value[kind]
+
+
+def installed_pair():
+    return choose_pair(inventory('runtimes'), inventory('devicetypes'))
+
+
+def ensure_runtime():
+    try:
+        pair = installed_pair()
+    except MissingCompatiblePair:
+        run('xcodebuild', '-downloadPlatform', 'iOS', '-buildVersion', '27.2', '-architectureVariant', 'arm64')
+        pair = installed_pair()
+    print('Required Simulator pair is available:', *pair, flush=True)
+    return pair
+
+
 def main():
-    runtimes = json.loads(run('xcrun', 'simctl', 'list', 'runtimes', '--json', capture=True))['runtimes']
-    device_types = json.loads(run('xcrun', 'simctl', 'list', 'devicetypes', '--json', capture=True))['devicetypes']
-    runtime, device_type = choose_pair(runtimes, device_types)
+    runtime, device_type = installed_pair()
     print('Testing compatible Simulator pair:', runtime, device_type, flush=True)
     device = str(uuid.UUID(run('xcrun', 'simctl', 'create', 'Sauna-Session-Tests-' + str(uuid.uuid4()),
                                device_type, runtime, capture=True).strip())).upper()
@@ -52,5 +76,15 @@ def main():
         print('Deleted owned Simulator:', device, flush=True)
 
 
+def cli(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--ensure-runtime', action='store_true', help='Install the required runtime only when no compatible pair is available')
+    args = parser.parse_args(argv)
+    if args.ensure_runtime:
+        ensure_runtime()
+    else:
+        main()
+
+
 if __name__ == '__main__':
-    main()
+    cli()
